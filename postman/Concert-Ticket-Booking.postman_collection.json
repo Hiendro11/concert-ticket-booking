@@ -1,0 +1,853 @@
+{
+  "info": {
+    "_postman_id": "2ed7cf22-7dc7-4e77-a5ec-ctb-postman",
+    "name": "Concert Ticket Booking API",
+    "description": "Run `npx prisma db seed` before running the collection. Start the API with `npm run start:dev`. Run folders in numeric order. Concurrency guarantees are covered by the scripts under scripts/concurrency.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Health is ok\", () => pm.expect(body.status).to.eql(\"ok\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Public Concerts",
+      "item": [
+        {
+          "name": "List Published Concerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/concerts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Response is array\", () => pm.expect(body).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Published Concert",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/concerts/{{concertId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Correct concert\", () => pm.expect(body.id).to.eql(pm.environment.get(\"concertId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Draft Concert Is Hidden",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/concerts/{{draftConcertId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Customer Bookings",
+      "item": [
+        {
+          "name": "Create Booking with GEEK10",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "postman-booking-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"ticketCategoryId\": \"{{vipCategoryId}}\",\n  \"quantity\": 2,\n  \"voucherCode\": \"GEEK10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Booking id exists\", () => pm.expect(body.id).to.be.a(\"string\"));",
+                  "pm.environment.set(\"bookingId\", body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retry Same Idempotency Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "postman-booking-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"ticketCategoryId\": \"{{vipCategoryId}}\",\n  \"quantity\": 2,\n  \"voucherCode\": \"GEEK10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Retry succeeds\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Same logical booking\", () => pm.expect(body.id).to.eql(pm.environment.get(\"bookingId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me/bookings?limit=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Booking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings/{{bookingId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Correct booking\", () => pm.expect(body.id).to.eql(pm.environment.get(\"bookingId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Other Customer Cannot Read Booking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{otherCustomerUserId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings/{{bookingId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"No ownership leak\", () => pm.expect(body.code).to.eql(\"BOOKING_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Same Key Different Payload Is Conflict",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "postman-booking-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"ticketCategoryId\": \"{{vipCategoryId}}\",\n  \"quantity\": 1,\n  \"voucherCode\": \"GEEK10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Correct error\", () => pm.expect(body.code).to.eql(\"IDEMPOTENCY_KEY_CONFLICT\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Expired Voucher Is Rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "postman-expired-voucher-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"ticketCategoryId\": \"{{standardCategoryId}}\",\n  \"quantity\": 1,\n  \"voucherCode\": \"EXPIRED10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Request is rejected\", () => pm.expect(pm.response.code).to.be.oneOf([400,409]));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Correct error\", () => pm.expect(body.code).to.eql(\"VOUCHER_EXPIRED\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Operations Concerts",
+      "item": [
+        {
+          "name": "View Concert Inventory",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{operatorUserId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/concerts/{{concertId}}/inventory"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer Is Forbidden from Operations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/concerts/{{concertId}}/inventory"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Correct error\", () => pm.expect(body.code).to.eql(\"OPERATOR_ACCESS_REQUIRED\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Operations Bookings",
+      "item": [
+        {
+          "name": "List Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{operatorUserId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/bookings?concertId={{concertId}}&limit=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Booking Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{operatorUserId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/bookings/{{bookingId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Booking for Confirm Flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "postman-confirm-flow-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"ticketCategoryId\": \"{{standardCategoryId}}\",\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set(\"confirmBookingId\", body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Booking",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{operatorUserId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/bookings/{{confirmBookingId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED\",\n  \"reason\": \"Payment received in Postman flow.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Confirmed\", () => pm.expect(body.status).to.eql(\"CONFIRMED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repeat Confirm Is Idempotent",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{operatorUserId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/bookings/{{confirmBookingId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Still confirmed\", () => pm.expect(body.status).to.eql(\"CONFIRMED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmed to Cancelled Is Invalid",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{operatorUserId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/bookings/{{confirmBookingId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Correct error\", () => pm.expect(body.code).to.eql(\"INVALID_BOOKING_STATUS_TRANSITION\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Booking for Cancel Flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{otherCustomerUserId}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "postman-cancel-flow-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"ticketCategoryId\": \"{{standardCategoryId}}\",\n  \"quantity\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.environment.set(\"cancelBookingId\", body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Booking",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{operatorUserId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/bookings/{{cancelBookingId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\",\n  \"reason\": \"Cancelled in Postman flow.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Cancelled\", () => pm.expect(body.status).to.eql(\"CANCELLED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repeat Cancel Is Idempotent",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{operatorUserId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/ops/bookings/{{cancelBookingId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Still cancelled\", () => pm.expect(body.status).to.eql(\"CANCELLED\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Validation and Auth Errors",
+      "item": [
+        {
+          "name": "Missing X-User-Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/bookings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Correct error\", () => pm.expect(body.code).to.eql(\"USER_ID_REQUIRED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing Idempotency-Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"ticketCategoryId\": \"{{standardCategoryId}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Request is rejected\", () => pm.expect(pm.response.code).to.be.oneOf([400,409]));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Correct error\", () => pm.expect(body.code).to.eql(\"IDEMPOTENCY_KEY_REQUIRED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quantity Above Maximum",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "{{customerUserId}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "postman-invalid-quantity-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"concertId\": \"{{concertId}}\",\n  \"ticketCategoryId\": \"{{standardCategoryId}}\",\n  \"quantity\": 11\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Validation error\", () => pm.expect(body.code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
