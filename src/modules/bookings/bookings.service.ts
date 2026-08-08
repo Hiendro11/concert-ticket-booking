@@ -22,12 +22,24 @@ import {
 } from './dto/booking-response.dto';
 import { BookingListQueryDto } from './dto/booking-list-query.dto';
 import { OperationsBookingListQueryDto } from './dto/operations-booking-list-query.dto';
+import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 
 interface IdempotencyRow {
   id: bigint;
   request_hash: string;
   status: 'PROCESSING' | 'COMPLETED';
   booking_id: bigint | null;
+}
+
+interface LockedBookingRow {
+  id: bigint;
+  ticket_category_id: bigint;
+  quantity: number;
+  status:
+    | 'PENDING_PAYMENT'
+    | 'CONFIRMED'
+    | 'CANCELLED'
+    | 'EXPIRED';
 }
 
 const MAX_DEADLOCK_RETRIES = 5;
@@ -954,6 +966,184 @@ export class BookingsService {
       booking,
       booking.voucherRedemption
         ?.voucher.code ?? null,
+    );
+  }
+
+  private defaultStatusReason(
+    status:
+      | 'CONFIRMED'
+      | 'CANCELLED'
+      | 'EXPIRED',
+  ): string {
+    switch (status) {
+      case 'CONFIRMED':
+        return 'Booking confirmed by operations.';
+
+      case 'CANCELLED':
+        return 'Booking cancelled by operations.';
+
+      case 'EXPIRED':
+        return 'Booking marked as expired by operations.';
+    }
+  }
+
+  async updateStatusForOperations(
+    operatorUserId: bigint,
+    bookingId: string,
+    dto: UpdateBookingStatusDto,
+  ): Promise<BookingResponseDto> {
+    const id = BigInt(bookingId);
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        /*
+         * Lock the booking row first.
+         *
+         * Concurrent status changes for the same
+         * booking are serialized here.
+         */
+        const rows =
+          await tx.$queryRaw<
+            LockedBookingRow[]
+          >`
+            SELECT
+              id,
+              ticket_category_id,
+              quantity,
+              status
+            FROM bookings
+            WHERE id = ${id}
+            FOR UPDATE
+          `;
+
+        const lockedBooking =
+          rows[0];
+
+        if (!lockedBooking) {
+          throw new AppException(
+            ErrorCode.BOOKING_NOT_FOUND,
+            'Booking was not found.',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+
+        /*
+         * Same desired terminal state is naturally
+         * idempotent.
+         *
+         * Example:
+         * CANCELLED -> CANCELLED
+         *
+         * Do not create another history row.
+         * Do not restore inventory again.
+         */
+        if (
+          lockedBooking.status ===
+          dto.status
+        ) {
+          const existing =
+            await tx.booking.findUniqueOrThrow({
+              where: {
+                id,
+              },
+
+              include:
+                this.bookingVoucherInclude,
+            });
+
+          return this.toResponse(
+            existing,
+            existing.voucherRedemption
+              ?.voucher.code ?? null,
+          );
+        }
+
+        /*
+         * Only PENDING_PAYMENT may transition.
+         */
+        if (
+          lockedBooking.status !==
+          'PENDING_PAYMENT'
+        ) {
+          throw new AppException(
+            ErrorCode.INVALID_BOOKING_STATUS_TRANSITION,
+            `Cannot change booking status from ${lockedBooking.status} to ${dto.status}.`,
+            HttpStatus.CONFLICT,
+          );
+        }
+
+        /*
+         * CANCELLED and EXPIRED release reserved
+         * ticket inventory.
+         *
+         * Because the booking row is locked,
+         * only the transaction that performs the
+         * first state transition can reach this block.
+         */
+        if (
+          dto.status === 'CANCELLED' ||
+          dto.status === 'EXPIRED'
+        ) {
+          await tx.ticketCategory.update({
+            where: {
+              id:
+                lockedBooking.ticket_category_id,
+            },
+
+            data: {
+              availableQuantity: {
+                increment: Number(
+                  lockedBooking.quantity,
+                ),
+              },
+            },
+          });
+        }
+
+        const updatedBooking =
+          await tx.booking.update({
+            where: {
+              id,
+            },
+
+            data: {
+              status:
+                dto.status,
+            },
+
+            include:
+              this.bookingVoucherInclude,
+          });
+
+        await tx.bookingStatusHistory.create({
+          data: {
+            bookingId:
+              id,
+
+            fromStatus:
+              lockedBooking.status,
+
+            toStatus:
+              dto.status,
+
+            changedByUserId:
+              operatorUserId,
+
+            reason:
+              dto.reason?.trim() ||
+              this.defaultStatusReason(
+                dto.status,
+              ),
+          },
+        });
+
+        return this.toResponse(
+          updatedBooking,
+          updatedBooking
+            .voucherRedemption
+            ?.voucher.code ?? null,
+        );
+      },
     );
   }
 }
