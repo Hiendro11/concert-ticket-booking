@@ -16,7 +16,12 @@ import { AppException } from '../../common/errors/app-exception';
 import { ErrorCode } from '../../common/errors/error-codes';
 
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { BookingResponseDto } from './dto/booking-response.dto';
+import {
+  BookingListResponseDto,
+  BookingResponseDto,
+} from './dto/booking-response.dto';
+import { BookingListQueryDto } from './dto/booking-list-query.dto';
+import { OperationsBookingListQueryDto } from './dto/operations-booking-list-query.dto';
 
 interface IdempotencyRow {
   id: bigint;
@@ -34,6 +39,18 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
   ) {}
+
+  private readonly bookingVoucherInclude = {
+    voucherRedemption: {
+      include: {
+        voucher: {
+          select: {
+            code: true,
+          },
+        },
+      },
+    },
+  } as const;
 
   async createBooking(
     userId: bigint,
@@ -743,5 +760,200 @@ export class BookingsService {
       createdAt:
         booking.createdAt.toISOString(),
     };
+  }
+
+  async findOneForUser(
+    userId: bigint,
+    bookingId: string,
+  ): Promise<BookingResponseDto> {
+    const booking =
+      await this.prisma.booking.findFirst({
+        where: {
+          id: BigInt(bookingId),
+          userId,
+        },
+
+        include:
+          this.bookingVoucherInclude,
+      });
+
+    if (!booking) {
+      throw new AppException(
+        ErrorCode.BOOKING_NOT_FOUND,
+        'Booking was not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return this.toResponse(
+      booking,
+      booking.voucherRedemption
+        ?.voucher.code ?? null,
+    );
+  }
+
+  async findMyBookings(
+    userId: bigint,
+    query: BookingListQueryDto,
+  ): Promise<BookingListResponseDto> {
+    const limit =
+      query.limit ?? 20;
+
+    const bookings =
+      await this.prisma.booking.findMany({
+        where: {
+          userId,
+        },
+
+        include:
+          this.bookingVoucherInclude,
+
+        orderBy: {
+          id: 'desc',
+        },
+
+        take: limit + 1,
+
+        ...(query.cursor
+          ? {
+              cursor: {
+                id: BigInt(
+                  query.cursor,
+                ),
+              },
+              skip: 1,
+            }
+          : {}),
+      });
+
+    const hasMore =
+      bookings.length > limit;
+
+    const page = hasMore
+      ? bookings.slice(0, limit)
+      : bookings;
+
+    return {
+      items: page.map((booking) =>
+        this.toResponse(
+          booking,
+          booking.voucherRedemption
+            ?.voucher.code ?? null,
+        ),
+      ),
+
+      nextCursor:
+        hasMore &&
+        page.length > 0
+          ? page[
+              page.length - 1
+            ].id.toString()
+          : null,
+    };
+  }
+
+  async findBookingsForOperations(
+    query: OperationsBookingListQueryDto,
+  ): Promise<BookingListResponseDto> {
+    const limit =
+      query.limit ?? 20;
+
+    const bookings =
+      await this.prisma.booking.findMany({
+        where: {
+          ...(query.concertId
+            ? {
+                concertId:
+                  BigInt(
+                    query.concertId,
+                  ),
+              }
+            : {}),
+
+          ...(query.status
+            ? {
+                status:
+                  query.status as
+                    | 'PENDING_PAYMENT'
+                    | 'CONFIRMED'
+                    | 'CANCELLED'
+                    | 'EXPIRED',
+              }
+            : {}),
+        },
+
+        include:
+          this.bookingVoucherInclude,
+
+        orderBy: {
+          id: 'desc',
+        },
+
+        take: limit + 1,
+
+        ...(query.cursor
+          ? {
+              cursor: {
+                id: BigInt(
+                  query.cursor,
+                ),
+              },
+              skip: 1,
+            }
+          : {}),
+      });
+
+    const hasMore =
+      bookings.length > limit;
+
+    const page = hasMore
+      ? bookings.slice(0, limit)
+      : bookings;
+
+    return {
+      items: page.map((booking) =>
+        this.toResponse(
+          booking,
+          booking.voucherRedemption
+            ?.voucher.code ?? null,
+        ),
+      ),
+
+      nextCursor:
+        hasMore &&
+        page.length > 0
+          ? page[
+              page.length - 1
+            ].id.toString()
+          : null,
+    };
+  }
+
+  async findOneForOperations(
+    bookingId: string,
+  ): Promise<BookingResponseDto> {
+    const booking =
+      await this.prisma.booking.findUnique({
+        where: {
+          id: BigInt(bookingId),
+        },
+
+        include:
+          this.bookingVoucherInclude,
+      });
+
+    if (!booking) {
+      throw new AppException(
+        ErrorCode.BOOKING_NOT_FOUND,
+        'Booking was not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return this.toResponse(
+      booking,
+      booking.voucherRedemption
+        ?.voucher.code ?? null,
+    );
   }
 }

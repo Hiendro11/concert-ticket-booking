@@ -5,6 +5,7 @@ import { DatabaseModule } from '../../database/database.module';
 import { UserContextGuard } from '../../common/auth/user-context.guard';
 
 import { BookingsController } from './bookings.controller';
+import { MyBookingsController } from './my-bookings.controller';
 import { BookingsService } from './bookings.service';
 
 @Module({
@@ -12,6 +13,7 @@ import { BookingsService } from './bookings.service';
 
   controllers: [
     BookingsController,
+    MyBookingsController,
   ],
 
   providers: [

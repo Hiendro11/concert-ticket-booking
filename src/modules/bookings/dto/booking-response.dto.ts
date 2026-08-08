@@ -73,3 +73,16 @@ export class BookingResponseDto {
   @ApiProperty()
   createdAt!: string;
 }
+
+export class BookingListResponseDto {
+  @ApiProperty({
+    type: [BookingResponseDto],
+  })
+  items!: BookingResponseDto[];
+
+  @ApiPropertyOptional({
+    example: '150',
+    nullable: true,
+  })
+  nextCursor!: string | null;
+}
