@@ -11,7 +11,7 @@ The API is intentionally small and focused on the workflows required by the asse
 - Ticket reservation.
 - Voucher application.
 - Booking status tracking.
-- Internal operation workflows for concerts, inventory, bookings, vouchers, and manual booking status updates.
+- Internal operation workflows for concerts, inventory, bookings, and manual booking status updates.
 
 The API is designed to make the important backend guarantees explicit:
 
@@ -270,33 +270,18 @@ Validation errors may additionally include:
 
 # 9. Pagination
 
-List APIs use bounded page pagination for the assessment.
+The API uses two pagination strategies depending on the endpoint:
+
+## Concert list — Page/offset
+
+`GET /api/v1/concerts` uses page-based pagination.
 
 Query parameters:
 
 ```text
-page
-limit
-```
-
-Defaults:
-
-```text
-page = 1
-limit = 20
-```
-
-Validation:
-
-```text
-page >= 1
-1 <= limit <= 100
-```
-
-Example:
-
-```http
-GET /api/v1/concerts?page=1&limit=20
+page   (default 1, min 1)
+limit  (default 20, max 100)
+from   (optional ISO date filter)
 ```
 
 Response:
@@ -306,11 +291,33 @@ Response:
   "items": [],
   "page": 1,
   "limit": 20,
-  "total": 0
+  "total": 1
 }
 ```
 
-For larger production datasets, cursor pagination can replace page/offset pagination later.
+## Booking lists — Cursor/keyset
+
+`GET /api/v1/me/bookings` and `GET /api/v1/ops/bookings` use cursor-based pagination.
+
+Query parameters:
+
+```text
+limit   (default 20, max 100)
+cursor  (opaque string from previous response)
+```
+
+Response:
+
+```json
+{
+  "items": [],
+  "nextCursor": "6001"
+}
+```
+
+When `nextCursor` is `null`, there are no more pages.
+
+Cursor pagination is chosen for booking lists because booking IDs are monotonically increasing BIGINTs, making keyset pagination stable and efficient under concurrent inserts.
 
 ---
 
@@ -2689,9 +2696,10 @@ GET    /api/v1/ops/concerts/:concertId/inventory
 GET    /api/v1/ops/bookings
 GET    /api/v1/ops/bookings/:bookingId
 PATCH  /api/v1/ops/bookings/:bookingId/status
-
-POST   /api/v1/ops/vouchers
 ```
+
+> Voucher administration (`POST /api/v1/ops/vouchers`) is intentionally out of scope.
+> Voucher campaigns are seeded for the assessment. See `00-scope-and-assumptions.md`.
 
 ---
 
