@@ -48,154 +48,143 @@ export class OperationsService {
   ) {
     const id = BigInt(concertId);
 
-    const concert =
-      await this.prisma.concert.findUnique({
-        where: {
-          id,
-        },
-        select: {
-          id: true,
-          status: true,
-        },
-      });
+    return this.prisma.$transaction(async (tx) => {
+      /*
+       * Lock the concert row first to prevent a TOCTOU race
+       * where publishConcert() changes status between our
+       * SELECT and INSERT.
+       */
+      const rows = await tx.$queryRaw<
+        { id: bigint; status: string }[]
+      >`
+        SELECT id, status
+        FROM concerts
+        WHERE id = ${id}
+        FOR UPDATE
+      `;
 
-    if (!concert) {
-      throw new AppException(
-        ErrorCode.CONCERT_NOT_FOUND,
-        'Concert was not found.',
-        HttpStatus.NOT_FOUND,
-      );
-    }
+      const concert = rows[0];
 
-    if (concert.status !== 'DRAFT') {
-      throw new AppException(
-        ErrorCode.CONCERT_ALREADY_PUBLISHED,
-        'Ticket categories can only be changed while the concert is in DRAFT status.',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    try {
-      const category =
-        await this.prisma.ticketCategory.create({
-          data: {
-            concertId: id,
-            name: dto.name.trim(),
-            price: dto.price,
-            totalQuantity: dto.totalQuantity,
-            availableQuantity:
-              dto.totalQuantity,
-          },
-        });
-
-      return {
-        id: category.id.toString(),
-        concertId:
-          category.concertId.toString(),
-        name: category.name,
-        price: category.price.toFixed(2),
-        totalQuantity:
-          category.totalQuantity,
-        availableQuantity:
-          category.availableQuantity,
-      };
-    } catch (error: unknown) {
-      if (
-        error instanceof
-          Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (!concert) {
         throw new AppException(
-          ErrorCode.TICKET_CATEGORY_ALREADY_EXISTS,
-          'A ticket category with this name already exists for the concert.',
+          ErrorCode.CONCERT_NOT_FOUND,
+          'Concert was not found.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (concert.status !== 'DRAFT') {
+        throw new AppException(
+          ErrorCode.CONCERT_ALREADY_PUBLISHED,
+          'Ticket categories can only be changed while the concert is in DRAFT status.',
           HttpStatus.CONFLICT,
         );
       }
 
-      throw error;
-    }
+      try {
+        const category =
+          await tx.ticketCategory.create({
+            data: {
+              concertId: id,
+              name: dto.name.trim(),
+              price: dto.price,
+              totalQuantity: dto.totalQuantity,
+              availableQuantity:
+                dto.totalQuantity,
+            },
+          });
+
+        return {
+          id: category.id.toString(),
+          concertId:
+            category.concertId.toString(),
+          name: category.name,
+          price: category.price.toFixed(2),
+          totalQuantity:
+            category.totalQuantity,
+          availableQuantity:
+            category.availableQuantity,
+        };
+      } catch (error: unknown) {
+        if (
+          error instanceof
+            Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new AppException(
+            ErrorCode.TICKET_CATEGORY_ALREADY_EXISTS,
+            'A ticket category with this name already exists for the concert.',
+            HttpStatus.CONFLICT,
+          );
+        }
+
+        throw error;
+      }
+    });
   }
 
   async publishConcert(concertId: string) {
     const id = BigInt(concertId);
 
-    const concert =
-      await this.prisma.concert.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          ticketCategories: {
-            select: {
-              id: true,
-            },
-          },
-        },
-      });
+    return this.prisma.$transaction(async (tx) => {
+      /*
+       * Lock the concert row first to serialize
+       * against concurrent createTicketCategory calls.
+       */
+      const rows = await tx.$queryRaw<
+        { id: bigint; status: string }[]
+      >`
+        SELECT id, status
+        FROM concerts
+        WHERE id = ${id}
+        FOR UPDATE
+      `;
 
-    if (!concert) {
-      throw new AppException(
-        ErrorCode.CONCERT_NOT_FOUND,
-        'Concert was not found.',
-        HttpStatus.NOT_FOUND,
-      );
-    }
+      const concertRow = rows[0];
 
-    if (concert.status !== 'DRAFT') {
-      throw new AppException(
-        ErrorCode.CONCERT_ALREADY_PUBLISHED,
-        'Only a DRAFT concert can be published.',
-        HttpStatus.CONFLICT,
-      );
-    }
+      if (!concertRow) {
+        throw new AppException(
+          ErrorCode.CONCERT_NOT_FOUND,
+          'Concert was not found.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
 
-    if (concert.startsAt <= new Date()) {
-      throw new AppException(
-        ErrorCode.CONCERT_NOT_PUBLISHABLE,
-        'Concert start time must be in the future.',
-        HttpStatus.CONFLICT,
-      );
-    }
+      if (concertRow.status !== 'DRAFT') {
+        throw new AppException(
+          ErrorCode.CONCERT_ALREADY_PUBLISHED,
+          'Only a DRAFT concert can be published.',
+          HttpStatus.CONFLICT,
+        );
+      }
 
-    if (concert.ticketCategories.length === 0) {
-      throw new AppException(
-        ErrorCode.CONCERT_NOT_PUBLISHABLE,
-        'Concert must have at least one ticket category before publishing.',
-        HttpStatus.CONFLICT,
-      );
-    }
+      const categoryCount =
+        await tx.ticketCategory.count({
+          where: { concertId: id },
+        });
 
-    const now = new Date();
+      if (categoryCount === 0) {
+        throw new AppException(
+          ErrorCode.CONCERT_NOT_PUBLISHABLE,
+          'Concert must have at least one ticket category before publishing.',
+          HttpStatus.CONFLICT,
+        );
+      }
 
-    const result =
-      await this.prisma.concert.updateMany({
-        where: {
-          id,
-          status: 'DRAFT',
-        },
+      const publishedAt = new Date();
+
+      const updated = await tx.concert.update({
+        where: { id },
         data: {
           status: 'PUBLISHED',
-          publishedAt: now,
+          publishedAt,
         },
       });
 
-    if (result.count !== 1) {
-      throw new AppException(
-        ErrorCode.CONCERT_ALREADY_PUBLISHED,
-        'Concert is no longer in DRAFT status.',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const published =
-      await this.prisma.concert.findUniqueOrThrow({
-        where: {
-          id,
-        },
-      });
-
-    return this.toConcertResponse(published);
+      return this.toConcertResponse(updated);
+    });
   }
+
 
   async getInventory(concertId: string) {
     const id = BigInt(concertId);
@@ -237,7 +226,7 @@ export class OperationsService {
               category.totalQuantity,
             availableQuantity:
               category.availableQuantity,
-            soldQuantity:
+            reservedOrSoldQuantity:
               category.totalQuantity -
               category.availableQuantity,
           }),

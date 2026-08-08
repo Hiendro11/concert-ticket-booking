@@ -88,8 +88,11 @@ export class InventoryCategoryResponseDto {
   @ApiProperty()
   availableQuantity!: number;
 
-  @ApiProperty()
-  soldQuantity!: number;
+  @ApiProperty({
+    description:
+      'Tickets no longer available: includes PENDING_PAYMENT (reserved) and CONFIRMED (sold).',
+  })
+  reservedOrSoldQuantity!: number;
 }
 
 export class ConcertInventoryResponseDto {
