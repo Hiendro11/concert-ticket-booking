@@ -21,7 +21,8 @@
     "test:concurrency:inventory": "prisma db seed && tsx scripts/concurrency/inventory-race.ts",
     "test:concurrency:idempotency": "prisma db seed && tsx scripts/concurrency/idempotency-race.ts",
     "test:concurrency:voucher": "prisma db seed && tsx scripts/concurrency/voucher-quota-race.ts",
-    "test:concurrency": "npm run test:concurrency:inventory && npm run test:concurrency:idempotency && npm run test:concurrency:voucher"
+    "test:concurrency:cancel": "prisma db seed && tsx scripts/concurrency/cancel-race.ts",
+    "test:concurrency": "npm run test:concurrency:inventory && npm run test:concurrency:idempotency && npm run test:concurrency:voucher && npm run test:concurrency:cancel"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
