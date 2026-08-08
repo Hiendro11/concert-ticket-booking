@@ -32,6 +32,27 @@ export default async function setup(): Promise<void> {
   const prisma = new PrismaClient({ adapter });
 
   try {
+    // Safety guard: refuse to run against non-test databases
+    const nodeEnv = process.env.NODE_ENV ?? '';
+    const dbName = database.toLowerCase();
+
+    if (nodeEnv === 'production') {
+      throw new Error(
+        'E2E setup refused: NODE_ENV=production. Never run this against production.',
+      );
+    }
+
+    if (
+      !dbName.includes('test') &&
+      !dbName.includes('e2e') &&
+      !dbName.includes('local')
+    ) {
+      throw new Error(
+        `E2E setup refused: database "${database}" does not look like a test database. ` +
+        'Expected the database name to contain "test", "e2e", or "local".',
+      );
+    }
+
     // Reset data in FK-safe order
     await prisma.bookingStatusHistory.deleteMany();
     await prisma.voucherRedemption.deleteMany();
