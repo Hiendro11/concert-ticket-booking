@@ -1260,49 +1260,19 @@ GET /api/v1/ops/bookings/:bookingId
 
 ```json
 {
-  "id": 123,
-  "customer": {
-    "id": 2,
-    "email": "customer@example.com",
-    "name": "Customer A"
-  },
-  "concert": {
-    "id": 1,
-    "name": "GEEK Music Night"
-  },
-  "ticketCategory": {
-    "id": 11,
-    "name": "VIP"
-  },
+  "id": "123",
+  "userId": "2001",
+  "concertId": "3001",
+  "ticketCategoryId": "4001",
   "quantity": 2,
   "unitPrice": "2000000.00",
   "subtotal": "4000000.00",
   "discountAmount": "400000.00",
   "totalAmount": "3600000.00",
   "status": "PENDING_PAYMENT",
-  "voucher": {
-    "code": "GEEK10",
-    "discountAmount": "400000.00"
-  },
-  "history": [
-    {
-      "fromStatus": null,
-      "toStatus": "PENDING_PAYMENT",
-      "changedByUserId": null,
-      "reason": null,
-      "createdAt": "2026-08-08T06:15:00.000Z"
-    }
-  ],
-  "createdAt": "2026-08-08T06:15:00.000Z",
-  "updatedAt": "2026-08-08T06:15:00.000Z"
-}
-```
-
-If no voucher:
-
-```json
-{
-  "voucher": null
+  "voucherCode": "GEEK10",
+  "expiresAt": "2026-08-08T06:30:00.000Z",
+  "createdAt": "2026-08-08T06:15:00.000Z"
 }
 ```
 
@@ -1424,129 +1394,6 @@ Explicitly surfacing state mismatch makes operation behavior easier to reason ab
 
 ---
 
-# 42. OPERATION — Create Voucher
-
-```http
-POST /api/v1/ops/vouchers
-```
-
-## Request — Percentage
-
-```json
-{
-  "code": "GEEK10",
-  "discountType": "PERCENTAGE",
-  "discountValue": "10.00",
-  "usageLimit": 100,
-  "startsAt": "2026-09-01T00:00:00.000Z",
-  "endsAt": "2026-09-30T23:59:59.000Z"
-}
-```
-
-## Request — Fixed amount
-
-```json
-{
-  "code": "FLASH50K",
-  "discountType": "FIXED_AMOUNT",
-  "discountValue": "50000.00",
-  "usageLimit": 50,
-  "startsAt": "2026-09-01T00:00:00.000Z",
-  "endsAt": "2026-09-07T23:59:59.000Z"
-}
-```
-
----
-
-# 43. Create Voucher Validation
-
-```text
-code:
-- required
-- trim
-- uppercase
-- max 64
-
-discountType:
-- PERCENTAGE or FIXED_AMOUNT
-
-discountValue:
-- > 0
-
-if PERCENTAGE:
-- <= 100
-
-usageLimit:
-- integer
-- > 0
-
-startsAt:
-- valid date
-
-endsAt:
-- valid date
-- later than startsAt
-```
-
-New voucher defaults:
-
-```text
-status = ACTIVE
-usedCount = 0
-```
-
----
-
-# 44. Create Voucher — Response
-
-```text
-201 Created
-```
-
-```json
-{
-  "id": 5,
-  "code": "GEEK10",
-  "discountType": "PERCENTAGE",
-  "discountValue": "10.00",
-  "usageLimit": 100,
-  "usedCount": 0,
-  "status": "ACTIVE",
-  "startsAt": "2026-09-01T00:00:00.000Z",
-  "endsAt": "2026-09-30T23:59:59.000Z"
-}
-```
-
-## Errors
-
-```text
-409 VOUCHER_CODE_ALREADY_EXISTS
-400 INVALID_VOUCHER_CONFIGURATION
-```
-
----
-
-# 45. Voucher Management Scope
-
-The initial operation API intentionally supports:
-
-```text
-create voucher
-```
-
-but does not need to support:
-
-```text
-update voucher
-delete voucher
-restore consumed voucher quota
-```
-
-This is an explicit scope decision.
-
-Voucher seed data may also be provided for reviewer convenience.
-
----
 
 # 46. SYSTEM — Health Check
 

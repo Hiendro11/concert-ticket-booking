@@ -39,8 +39,6 @@ Operators can:
 - Create and publish concerts.
 - Create/manage ticket categories and inventory.
 - Validate ticket availability.
-- Create voucher campaigns.
-- Inspect failed or suspicious bookings.
 - Manually update booking status when necessary.
 
 ---
@@ -122,7 +120,6 @@ The implementation will support a focused set of operation workflows:
 - View/search bookings.
 - View booking details.
 - Manually change a booking status through valid state transitions.
-- Create a voucher campaign.
 
 The operation scope is intentionally focused on workflows that directly support booking correctness and launch-week operations.
 
@@ -549,6 +546,8 @@ The following are intentionally excluded from the core assessment implementation
 - Real payment gateway integration.
 - Payment provider webhook handling.
 - Refund processing.
+- Voucher administration APIs (intentionally out of scope; voucher campaigns are seeded for the assessment to focus on concurrency-safe redemption).
+- Suspicious booking detection and failed-attempt persistence (operators can inspect successful booking records and manually update valid booking states).
 - Assigned seating / seat map.
 - Email notification.
 - SMS notification.
