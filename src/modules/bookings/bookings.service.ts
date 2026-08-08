@@ -4,7 +4,6 @@ import {
   Logger,
 } from '@nestjs/common';
 
-import { createHash } from 'crypto';
 
 import {
   Prisma,
@@ -23,6 +22,12 @@ import {
 import { BookingListQueryDto } from './dto/booking-list-query.dto';
 import { OperationsBookingListQueryDto } from './dto/operations-booking-list-query.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
+import {
+  normalizeVoucherCode,
+  createRequestHash as canonicalizeHash,
+  type CanonicalBookingRequest,
+} from './booking-canonicalize';
+import { calculateDiscount } from './booking-pricing';
 
 interface IdempotencyRow {
   id: bigint;
@@ -253,6 +258,17 @@ export class BookingsService {
           throw new AppException(
             ErrorCode.CONCERT_NOT_PUBLISHED,
             'Concert is not published.',
+            HttpStatus.CONFLICT,
+          );
+        }
+
+        if (
+          ticketCategory.concert.startsAt <=
+          new Date()
+        ) {
+          throw new AppException(
+            ErrorCode.CONCERT_NOT_PUBLISHED,
+            'Concert has already started and is no longer accepting bookings.',
             HttpStatus.CONFLICT,
           );
         }
@@ -603,85 +619,30 @@ export class BookingsService {
   }
 
   private normalizeVoucherCode(
-    voucherCode:
-      | string
-      | undefined,
+    voucherCode: string | undefined,
   ): string | null {
-    if (!voucherCode) {
-      return null;
-    }
-
-    const normalized = voucherCode.trim().toUpperCase();
-    return normalized === '' ? null : normalized;
+    return normalizeVoucherCode(voucherCode);
   }
 
   private createRequestHash(
     dto: CreateBookingDto,
     voucherCode: string | null,
   ): string {
-    /*
-     * Voucher MUST be part of the
-     * idempotency request identity.
-     */
-    const canonicalRequest = {
+    const canonical: CanonicalBookingRequest = {
       concertId: dto.concertId,
-
-      ticketCategoryId:
-        dto.ticketCategoryId,
-
+      ticketCategoryId: dto.ticketCategoryId,
       quantity: dto.quantity,
-
       voucherCode,
     };
-
-    return createHash('sha256')
-      .update(
-        JSON.stringify(
-          canonicalRequest,
-        ),
-      )
-      .digest('hex');
+    return canonicalizeHash(canonical);
   }
 
   private calculateDiscount(
     subtotal: Prisma.Decimal,
-
     discountType: string,
-
-    discountValue:
-      Prisma.Decimal,
+    discountValue: Prisma.Decimal,
   ): Prisma.Decimal {
-    let discount:
-      Prisma.Decimal;
-
-    if (
-      discountType ===
-      'PERCENTAGE'
-    ) {
-      discount = subtotal
-        .mul(discountValue)
-        .div(100)
-        .toDecimalPlaces(2);
-    } else {
-      discount =
-        discountValue.toDecimalPlaces(
-          2,
-        );
-    }
-
-    /*
-     * A fixed voucher must never make
-     * totalAmount negative.
-     */
-    if (
-      discount.greaterThan(
-        subtotal,
-      )
-    ) {
-      return subtotal;
-    }
-
-    return discount;
+    return calculateDiscount(subtotal, discountType, discountValue);
   }
 
   private toResponse(
