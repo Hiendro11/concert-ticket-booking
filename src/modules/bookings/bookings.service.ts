@@ -611,9 +611,8 @@ export class BookingsService {
       return null;
     }
 
-    return voucherCode
-      .trim()
-      .toUpperCase();
+    const normalized = voucherCode.trim().toUpperCase();
+    return normalized === '' ? null : normalized;
   }
 
   private createRequestHash(
