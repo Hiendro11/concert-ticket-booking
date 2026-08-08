@@ -16,7 +16,7 @@ import { ConcertsService } from './concerts.service';
 import { ConcertIdParamDto } from './dto/concert-id-param.dto';
 import { ConcertResponseDto } from './dto/concert-response.dto';
 
-@ApiTags('Concerts')
+@ApiTags('Public - Concerts')
 @Controller('concerts')
 export class ConcertsController {
   constructor(

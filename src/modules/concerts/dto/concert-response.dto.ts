@@ -2,6 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class TicketCategoryResponseDto {
   @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
     example: '4001',
   })
   id!: string;
@@ -12,6 +14,7 @@ export class TicketCategoryResponseDto {
   name!: string;
 
   @ApiProperty({
+    type: String,
     example: '2000000.00',
     description: 'Ticket price as a decimal string.',
   })
@@ -30,6 +33,8 @@ export class TicketCategoryResponseDto {
 
 export class ConcertResponseDto {
   @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
     example: '3001',
   })
   id!: string;

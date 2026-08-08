@@ -68,6 +68,11 @@ async function bootstrap(): Promise<void> {
     'docs',
     app,
     document,
+    {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    },
   );
 
   const port =

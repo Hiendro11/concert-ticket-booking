@@ -90,6 +90,12 @@ export class OperationsBookingsController {
   @ApiOperation({
     summary:
       'Update booking status',
+    description: `
+State Machine:
+- \`PENDING_PAYMENT\` -> \`CONFIRMED\` / \`CANCELLED\` / \`EXPIRED\`
+- Terminal states (\`CONFIRMED\`, \`CANCELLED\`, \`EXPIRED\`) cannot transition to other states.
+- Repeated transitions to the same terminal state are idempotent.
+    `,
   })
   @ApiOkResponse({
     type: BookingResponseDto,

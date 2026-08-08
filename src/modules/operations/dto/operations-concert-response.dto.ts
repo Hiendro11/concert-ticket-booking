@@ -5,6 +5,8 @@ import {
 
 export class OperationsConcertResponseDto {
   @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
     example: '3001',
   })
   id!: string;
@@ -35,16 +37,24 @@ export class OperationsConcertResponseDto {
 }
 
 export class TicketCategoryOperationResponseDto {
-  @ApiProperty()
+  @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
+  })
   id!: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
+  })
   concertId!: string;
 
   @ApiProperty()
   name!: string;
 
   @ApiProperty({
+    type: String,
+    description: 'Ticket price as a decimal string.',
     example: '1500000.00',
   })
   price!: string;
@@ -57,13 +67,19 @@ export class TicketCategoryOperationResponseDto {
 }
 
 export class InventoryCategoryResponseDto {
-  @ApiProperty()
+  @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
+  })
   id!: string;
 
   @ApiProperty()
   name!: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    type: String,
+    description: 'Ticket price as a decimal string.',
+  })
   price!: string;
 
   @ApiProperty()
@@ -77,7 +93,10 @@ export class InventoryCategoryResponseDto {
 }
 
 export class ConcertInventoryResponseDto {
-  @ApiProperty()
+  @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
+  })
   concertId!: string;
 
   @ApiProperty()

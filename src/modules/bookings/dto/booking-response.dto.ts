@@ -5,21 +5,29 @@ import {
 
 export class BookingResponseDto {
   @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
     example: '6001',
   })
   id!: string;
 
   @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
     example: '2001',
   })
   userId!: string;
 
   @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
     example: '3001',
   })
   concertId!: string;
 
   @ApiProperty({
+    type: String,
+    description: 'BigInt ID serialized as string.',
     example: '4001',
   })
   ticketCategoryId!: string;
@@ -30,21 +38,29 @@ export class BookingResponseDto {
   quantity!: number;
 
   @ApiProperty({
+    type: String,
+    description: 'Money amount as a decimal string.',
     example: '2000000.00',
   })
   unitPrice!: string;
 
   @ApiProperty({
+    type: String,
+    description: 'Money amount as a decimal string.',
     example: '4000000.00',
   })
   subtotal!: string;
 
   @ApiProperty({
+    type: String,
+    description: 'Money amount as a decimal string.',
     example: '0.00',
   })
   discountAmount!: string;
 
   @ApiProperty({
+    type: String,
+    description: 'Money amount as a decimal string.',
     example: '4000000.00',
   })
   totalAmount!: string;

@@ -67,17 +67,35 @@ export class GlobalExceptionFilter
       if (typeof body === 'string') {
         message = body;
       } else {
-        code =
-          body.code ??
-          (status === HttpStatus.BAD_REQUEST
-            ? ErrorCode.VALIDATION_ERROR
-            : code);
-
         if (Array.isArray(body.message)) {
           message = 'Request validation failed.';
           details = body.message;
-        } else if (body.message) {
-          message = body.message;
+          code = body.code ?? ErrorCode.VALIDATION_ERROR;
+        } else {
+          if (body.message) {
+            message = body.message;
+          }
+          if (body.code) {
+            code = body.code;
+          } else {
+            switch (status) {
+              case HttpStatus.BAD_REQUEST:
+                code = 'BAD_REQUEST';
+                break;
+              case HttpStatus.UNAUTHORIZED:
+                code = 'UNAUTHORIZED';
+                break;
+              case HttpStatus.FORBIDDEN:
+                code = 'FORBIDDEN';
+                break;
+              case HttpStatus.NOT_FOUND:
+                code = 'NOT_FOUND';
+                break;
+              case HttpStatus.CONFLICT:
+                code = 'CONFLICT';
+                break;
+            }
+          }
         }
 
         if (body.details !== undefined) {

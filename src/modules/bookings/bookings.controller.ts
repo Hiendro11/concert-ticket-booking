@@ -33,9 +33,8 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingIdParamDto } from './dto/booking-id-param.dto';
 import { BookingResponseDto } from './dto/booking-response.dto';
 
-@ApiTags('Bookings')
+@ApiTags('Customer - Bookings')
 @ApiSecurity('user-id')
-@ApiSecurity('idempotency-key')
 @Controller('bookings')
 export class BookingsController {
   constructor(
@@ -44,6 +43,7 @@ export class BookingsController {
 
   @Post()
   @UseGuards(UserContextGuard)
+  @ApiSecurity('idempotency-key')
   @ApiOperation({
     summary:
       'Create an idempotent ticket booking',
@@ -53,11 +53,15 @@ export class BookingsController {
   })
   @ApiBadRequestResponse({
     description:
-      'Invalid request or missing Idempotency-Key.',
+      'VALIDATION_ERROR, IDEMPOTENCY_KEY_REQUIRED',
+  })
+  @ApiNotFoundResponse({
+    description:
+      'VOUCHER_NOT_FOUND, TICKET_CATEGORY_NOT_FOUND',
   })
   @ApiConflictResponse({
     description:
-      'Inventory unavailable or idempotency conflict.',
+      'INSUFFICIENT_TICKET_INVENTORY, IDEMPOTENCY_KEY_CONFLICT, VOUCHER_INACTIVE, VOUCHER_NOT_STARTED, VOUCHER_EXPIRED, VOUCHER_USAGE_LIMIT_REACHED, VOUCHER_ALREADY_USED, CONCERT_NOT_PUBLISHED',
   })
   createBooking(
     @CurrentUser()

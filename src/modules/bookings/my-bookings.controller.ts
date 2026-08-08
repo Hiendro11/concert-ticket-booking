@@ -21,7 +21,7 @@ import { BookingsService } from './bookings.service';
 import { BookingListQueryDto } from './dto/booking-list-query.dto';
 import { BookingListResponseDto } from './dto/booking-response.dto';
 
-@ApiTags('Bookings')
+@ApiTags('Customer - Bookings')
 @ApiSecurity('user-id')
 @UseGuards(UserContextGuard)
 @Controller('me/bookings')
