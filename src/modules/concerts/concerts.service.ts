@@ -26,6 +26,7 @@ type ConcertRecord = {
 
     price: {
       toString(): string;
+      toFixed(decimalPlaces?: number): string;
     };
 
     totalQuantity: number;
@@ -129,7 +130,7 @@ export class ConcertsService {
           ): TicketCategoryResponseDto => ({
             id: category.id.toString(),
             name: category.name,
-            price: category.price.toString(),
+            price: category.price.toFixed(2),
             totalQuantity:
               category.totalQuantity,
             availableQuantity:
