@@ -17,7 +17,7 @@
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
+    "test:e2e": "tsx test/e2e/setup.ts && node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --runInBand",
     "test:concurrency:inventory": "prisma db seed && tsx scripts/concurrency/inventory-race.ts",
     "test:concurrency:idempotency": "prisma db seed && tsx scripts/concurrency/idempotency-race.ts",
     "test:concurrency:voucher": "prisma db seed && tsx scripts/concurrency/voucher-quota-race.ts",
