@@ -132,9 +132,9 @@ export class OperationsService {
        * against concurrent createTicketCategory calls.
        */
       const rows = await tx.$queryRaw<
-        { id: bigint; status: string }[]
+        { id: bigint; status: string; starts_at: Date }[]
       >`
-        SELECT id, status
+        SELECT id, status, starts_at
         FROM concerts
         WHERE id = ${id}
         FOR UPDATE
@@ -154,6 +154,14 @@ export class OperationsService {
         throw new AppException(
           ErrorCode.CONCERT_ALREADY_PUBLISHED,
           'Only a DRAFT concert can be published.',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      if (concertRow.starts_at <= new Date()) {
+        throw new AppException(
+          ErrorCode.CONCERT_NOT_PUBLISHABLE,
+          'Concert start time must be in the future.',
           HttpStatus.CONFLICT,
         );
       }

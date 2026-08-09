@@ -674,6 +674,30 @@ voucher used_count = 5
 ticket inventory decremented only for committed bookings
 ```
 
+### Same-user voucher abuse
+
+```bash
+npm run test:concurrency:voucher-abuse
+```
+
+Scenario:
+
+```text
+10 concurrent booking requests
+same customer
+same one-time voucher (GEEK10)
+different idempotency keys
+```
+
+Expected invariant:
+
+```text
+1 successful booking
+9 voucher rejections (VOUCHER_ALREADY_USED)
+voucher_redemptions table has exactly 1 row for this user
+ticket inventory decremented exactly once
+```
+
 ### Cancellation race
 
 ```bash
@@ -915,6 +939,7 @@ npm test
 npm run test:concurrency:inventory
 npm run test:concurrency:idempotency
 npm run test:concurrency:voucher
+npm run test:concurrency:voucher-abuse
 npm run test:concurrency:cancel
 ```
 
