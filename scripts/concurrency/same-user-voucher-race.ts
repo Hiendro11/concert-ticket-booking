@@ -117,10 +117,10 @@ async function main(): Promise<void> {
     `Expected exactly 1 booking for user ${USER_ID}, got ${bookingsForUser}`,
   );
 
-  // Seed starts VIP at 50. One successful booking of quantity 1 => 49 remaining.
+  // Seed starts VIP at 20. One successful booking of quantity 1 => 19 remaining.
   assert(
-    vipCategory.availableQuantity === 49,
-    `Expected VIP inventory=49, got ${vipCategory.availableQuantity}`,
+    vipCategory.availableQuantity === 19,
+    `Expected VIP inventory=19, got ${vipCategory.availableQuantity}`,
   );
 
   console.log('');
