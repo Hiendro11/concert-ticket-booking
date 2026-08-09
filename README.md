@@ -950,6 +950,7 @@ npm run test:concurrency:cancel
 For the fastest local review:
 
 ```bash
+cp .env.example .env
 npm install
 docker compose up -d
 npx prisma migrate deploy

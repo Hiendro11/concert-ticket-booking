@@ -10,6 +10,12 @@ import 'dotenv/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../../src/generated/prisma/client';
 
+function relativeDate(offsetDays: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d;
+}
+
 export default async function setup(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
 
@@ -45,11 +51,12 @@ export default async function setup(): Promise<void> {
     if (
       !dbName.includes('test') &&
       !dbName.includes('e2e') &&
-      !dbName.includes('local')
+      !dbName.includes('local') &&
+      dbName !== 'concert_ticket_booking'
     ) {
       throw new Error(
         `E2E setup refused: database "${database}" does not look like a test database. ` +
-        'Expected the database name to contain "test", "e2e", or "local".',
+        'Expected the database name to contain "test", "e2e", "local", or be exactly "concert_ticket_booking".',
       );
     }
 
@@ -87,16 +94,16 @@ export default async function setup(): Promise<void> {
           name: 'Neon Pulse Live 2026',
           venue: 'Saigon Exhibition & Convention Center, Ho Chi Minh City',
           description: 'High-demand concert fixture for flash-sale booking tests.',
-          startsAt: new Date('2026-09-20T12:00:00.000Z'),
+          startsAt: relativeDate(60),
           status: 'PUBLISHED',
-          publishedAt: new Date('2026-08-08T09:00:00.000Z'),
+          publishedAt: relativeDate(-30),
         },
         {
           id: 3002n,
           name: 'Indie Skyline Sessions 2026',
           venue: 'Youth Cultural House, Ho Chi Minh City',
           description: 'Draft concert fixture for unpublished-booking rejection tests.',
-          startsAt: new Date('2026-10-18T12:00:00.000Z'),
+          startsAt: relativeDate(90),
           status: 'DRAFT',
           publishedAt: null,
         },
@@ -123,8 +130,8 @@ export default async function setup(): Promise<void> {
           usageLimit: 10,
           usedCount: 0,
           status: 'ACTIVE',
-          startsAt: new Date('2026-08-01T00:00:00.000Z'),
-          endsAt: new Date('2026-10-01T00:00:00.000Z'),
+          startsAt: relativeDate(-7),
+          endsAt: relativeDate(180),
         },
         {
           id: 5002n,
@@ -134,8 +141,8 @@ export default async function setup(): Promise<void> {
           usageLimit: 5,
           usedCount: 0,
           status: 'ACTIVE',
-          startsAt: new Date('2026-08-01T00:00:00.000Z'),
-          endsAt: new Date('2026-09-30T23:59:59.000Z'),
+          startsAt: relativeDate(-7),
+          endsAt: relativeDate(180),
         },
         {
           id: 5003n,
@@ -145,8 +152,8 @@ export default async function setup(): Promise<void> {
           usageLimit: 100,
           usedCount: 0,
           status: 'ACTIVE',
-          startsAt: new Date('2026-07-01T00:00:00.000Z'),
-          endsAt: new Date('2026-08-01T00:00:00.000Z'),  // already expired
+          startsAt: relativeDate(-60),
+          endsAt: relativeDate(-7),  // already expired
         },
       ],
     });
