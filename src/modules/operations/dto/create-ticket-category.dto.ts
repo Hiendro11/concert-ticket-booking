@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsInt,
   IsString,
@@ -12,6 +13,9 @@ export class CreateTicketCategoryDto {
   @ApiProperty({
     example: 'VIP',
   })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @Length(1, 100)
   name!: string;

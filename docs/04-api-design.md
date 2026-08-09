@@ -197,14 +197,12 @@ rather than:
 
 A thin response shape is simpler and more idiomatic for REST.
 
-List endpoints may return metadata:
+List endpoints return a wrapper where relevant:
 
 ```json
 {
   "items": [],
-  "page": 1,
-  "limit": 20,
-  "total": 100
+  "nextCursor": null
 }
 ```
 
@@ -272,28 +270,9 @@ Validation errors may additionally include:
 
 The API uses two pagination strategies depending on the endpoint:
 
-## Concert list — Page/offset
+## Concert list — No pagination (full list)
 
-`GET /api/v1/concerts` uses page-based pagination.
-
-Query parameters:
-
-```text
-page   (default 1, min 1)
-limit  (default 20, max 100)
-from   (optional ISO date filter)
-```
-
-Response:
-
-```json
-{
-  "items": [],
-  "page": 1,
-  "limit": 20,
-  "total": 1
-}
-```
+`GET /api/v1/concerts` returns all published concerts in a single array. Pagination is not implemented for the assessment scope because the concert catalogue is expected to be small.
 
 ## Booking lists — Cursor/keyset
 
@@ -447,19 +426,11 @@ Conceptual response:
 GET /api/v1/concerts
 ```
 
-## Query parameters
+## No query parameters
 
-```text
-page
-limit
-from
-```
+`GET /api/v1/concerts` does not accept pagination parameters.
 
-Possible request:
-
-```http
-GET /api/v1/concerts?page=1&limit=20&from=2026-09-01T00:00:00.000Z
-```
+Returns all published concerts sorted by `startsAt ASC, id ASC`.
 
 ## Behavior
 
@@ -468,8 +439,6 @@ Return only:
 ```text
 status = PUBLISHED
 ```
-
-Optionally filter concerts beginning on/after `from`.
 
 Sort:
 
@@ -481,28 +450,22 @@ id ASC
 ## Response — 200
 
 ```json
-{
-  "items": [
-    {
-      "id": 1,
-      "name": "GEEK Music Night",
-      "venue": "Ho Chi Minh City",
-      "description": "Launch week concert",
-      "startsAt": "2026-09-20T12:00:00.000Z",
-      "status": "PUBLISHED"
-    }
-  ],
-  "page": 1,
-  "limit": 20,
-  "total": 1
-}
+[
+  {
+    "id": "3001",
+    "name": "Neon Pulse Live 2026",
+    "venue": "SECC, Ho Chi Minh City",
+    "description": "High-demand concert fixture.",
+    "startsAt": "2026-09-20T12:00:00.000Z",
+    "status": "PUBLISHED"
+  }
+]
 ```
 
 ## Errors
 
 ```text
-400 INVALID_PAGINATION
-400 INVALID_DATE_FILTER
+(none — returns empty array when no published concerts exist)
 ```
 
 ---
@@ -938,15 +901,15 @@ X-User-Id: 2
 Query:
 
 ```text
-page
-limit
-status
+limit   (default 20, max 100)
+cursor  (opaque string from previous response, optional)
 ```
 
 Example:
 
 ```http
-GET /api/v1/me/bookings?page=1&limit=20&status=CONFIRMED
+GET /api/v1/me/bookings?limit=20
+GET /api/v1/me/bookings?limit=20&cursor=12345
 ```
 
 ## Response — 200
@@ -955,10 +918,10 @@ GET /api/v1/me/bookings?page=1&limit=20&status=CONFIRMED
 {
   "items": [
     {
-      "id": 123,
-      "concertId": 1,
-      "concertName": "GEEK Music Night",
-      "ticketCategoryId": 11,
+      "id": "123",
+      "concertId": "3001",
+      "concertName": "Neon Pulse Live 2026",
+      "ticketCategoryId": "4001",
       "ticketCategoryName": "VIP",
       "quantity": 2,
       "totalAmount": "3600000.00",
@@ -966,11 +929,11 @@ GET /api/v1/me/bookings?page=1&limit=20&status=CONFIRMED
       "createdAt": "2026-08-08T06:15:00.000Z"
     }
   ],
-  "page": 1,
-  "limit": 20,
-  "total": 1
+  "nextCursor": null
 }
 ```
+
+When `nextCursor` is non-null, pass it as `cursor` to fetch the next page.
 
 ---
 
@@ -1218,17 +1181,17 @@ GET /api/v1/ops/bookings
 ## Query parameters
 
 ```text
-page
-limit
-status
-concertId
-userId
+limit     (default 20, max 100)
+cursor    (opaque string from previous response, optional)
+concertId (optional filter)
+status    (optional filter: PENDING_PAYMENT | CONFIRMED | CANCELLED | EXPIRED)
 ```
 
 Example:
 
 ```http
-GET /api/v1/ops/bookings?status=PENDING_PAYMENT&concertId=1&page=1&limit=20
+GET /api/v1/ops/bookings?status=PENDING_PAYMENT&concertId=3001&limit=20
+GET /api/v1/ops/bookings?limit=20&cursor=12345
 ```
 
 ## Response — 200
@@ -1237,11 +1200,11 @@ GET /api/v1/ops/bookings?status=PENDING_PAYMENT&concertId=1&page=1&limit=20
 {
   "items": [
     {
-      "id": 123,
-      "userId": 2,
-      "concertId": 1,
-      "concertName": "GEEK Music Night",
-      "ticketCategoryId": 11,
+      "id": "123",
+      "userId": "2001",
+      "concertId": "3001",
+      "concertName": "Neon Pulse Live 2026",
+      "ticketCategoryId": "4001",
       "ticketCategoryName": "VIP",
       "quantity": 2,
       "totalAmount": "3600000.00",
@@ -1249,9 +1212,7 @@ GET /api/v1/ops/bookings?status=PENDING_PAYMENT&concertId=1&page=1&limit=20
       "createdAt": "2026-08-08T06:15:00.000Z"
     }
   ],
-  "page": 1,
-  "limit": 20,
-  "total": 1
+  "nextCursor": null
 }
 ```
 

@@ -20,7 +20,7 @@ import {
 
 const prisma = createTestPrisma();
 
-// GEEK10 voucher: 10% discount, usage_limit=100 (plenty of global quota)
+// GEEK10 voucher: 10% discount, usage_limit=10 (plenty of global quota for this 10-request test)
 // Customer 2001 has no prior redemption from seed
 const USER_ID = '2001';
 const VOUCHER_CODE = 'GEEK10';

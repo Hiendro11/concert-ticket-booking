@@ -53,6 +53,16 @@ const ids = {
   expired10: 5003n,
 } as const;
 
+/**
+ * Generate a date relative to now so the seed never contains stale
+ * hardcoded dates that silently break tests after those dates pass.
+ */
+function relativeDate(offsetDays: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d;
+}
+
 const loadTestUsers = Array.from(
   { length: 10 },
   (_, index) => ({
@@ -145,17 +155,13 @@ async function seedConcerts(): Promise<void> {
           'High-demand concert fixture for flash-sale booking tests.',
 
         startsAt:
-          new Date(
-            '2026-09-20T12:00:00.000Z',
-          ),
+          relativeDate(60), // 60 days from now — always in the future
 
         status:
           'PUBLISHED',
 
         publishedAt:
-          new Date(
-            '2026-08-08T09:00:00.000Z',
-          ),
+          relativeDate(-30), // published 30 days ago
       },
 
       {
@@ -172,9 +178,7 @@ async function seedConcerts(): Promise<void> {
           'Draft concert fixture for unpublished-booking rejection tests.',
 
         startsAt:
-          new Date(
-            '2026-10-18T12:00:00.000Z',
-          ),
+          relativeDate(90), // 90 days from now — always in the future
 
         status:
           'DRAFT',
@@ -278,14 +282,10 @@ async function seedVouchers(): Promise<void> {
           'ACTIVE',
 
         startsAt:
-          new Date(
-            '2026-08-01T00:00:00.000Z',
-          ),
+          relativeDate(-7), // started 7 days ago
 
         endsAt:
-          new Date(
-            '2026-10-01T00:00:00.000Z',
-          ),
+          relativeDate(180), // valid for 180 days from now
       },
 
       {
@@ -311,14 +311,10 @@ async function seedVouchers(): Promise<void> {
           'ACTIVE',
 
         startsAt:
-          new Date(
-            '2026-08-01T00:00:00.000Z',
-          ),
+          relativeDate(-7), // started 7 days ago
 
         endsAt:
-          new Date(
-            '2026-09-30T23:59:59.000Z',
-          ),
+          relativeDate(180), // valid for 180 days from now
       },
 
       {
@@ -344,14 +340,10 @@ async function seedVouchers(): Promise<void> {
           'ACTIVE',
 
         startsAt:
-          new Date(
-            '2026-07-01T00:00:00.000Z',
-          ),
+          relativeDate(-60), // started 60 days ago
 
         endsAt:
-          new Date(
-            '2026-08-01T00:00:00.000Z',
-          ),
+          relativeDate(-7), // expired 7 days ago — guaranteed expired fixture
       },
     ],
   });

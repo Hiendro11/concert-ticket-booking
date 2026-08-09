@@ -270,21 +270,25 @@ All other transitions are rejected with `INVALID_BOOKING_STATUS_TRANSITION`.
 
 `createTicketCategory` and `publishConcert` use `SELECT ... FOR UPDATE` on the concert row within a transaction. This serializes concurrent requests and prevents a TOCTOU race where a ticket category is added to an already-published concert.
 
+The dangerous race is when `publishConcert` **wins** the lock first:
+
 ```mermaid
 sequenceDiagram
     participant A as createTicketCategory
     participant B as publishConcert
     participant DB as MySQL
 
-    A->>DB: BEGIN + SELECT id, status FOR UPDATE
+    B->>DB: BEGIN + SELECT id, status, starts_at FOR UPDATE
     Note over DB: Row locked
-    B->>DB: BEGIN + SELECT id, status FOR UPDATE
-    Note over B,DB: B blocks (waiting for lock)
-    A->>DB: INSERT ticket_category
-    A->>DB: COMMIT (lock released)
-    B->>DB: SELECT returns PUBLISHED status
-    B->>DB: ROLLBACK (already published)
+    A->>DB: BEGIN + SELECT id, status FOR UPDATE
+    Note over A,DB: A blocks (waiting for lock)
+    B->>DB: UPDATE concert SET status=PUBLISHED
+    B->>DB: COMMIT (lock released)
+    A->>DB: SELECT returns status=PUBLISHED
+    A->>DB: ROLLBACK (CONCERT_ALREADY_PUBLISHED)
 ```
+
+If `createTicketCategory` wins the lock first, it simply inserts the category and commits. The concert is still DRAFT, so the subsequent `publishConcert` will succeed normally — no conflict.
 
 ---
 
@@ -336,11 +340,11 @@ See `04-api-design.md` for full contract details.
 
 | Endpoint | Strategy | Params |
 |---|---|---|
-| `GET /api/v1/concerts` | Page/offset | `page`, `limit`, `from` |
+| `GET /api/v1/concerts` | None (full list) | — |
 | `GET /api/v1/me/bookings` | Cursor/keyset | `cursor`, `limit` → `nextCursor` |
 | `GET /api/v1/ops/bookings` | Cursor/keyset | `cursor`, `limit`, `concertId`, `status` |
 
-Cursor pagination is used for booking lists because booking IDs are monotonically increasing BIGINTs, making keyset pagination stable and efficient under concurrent inserts.
+`GET /api/v1/concerts` returns all published concerts in a single array. Pagination is not implemented for the assessment scope because the concert catalogue is expected to be small. Cursor pagination is used for booking lists because booking IDs are monotonically increasing BIGINTs, making keyset pagination stable and efficient under concurrent inserts.
 
 ---
 

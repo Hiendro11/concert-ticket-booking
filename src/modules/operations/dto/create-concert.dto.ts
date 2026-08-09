@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsISO8601,
   IsOptional,
@@ -11,6 +12,9 @@ export class CreateConcertDto {
   @ApiProperty({
     example: 'Midnight Echo Live 2026',
   })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @Length(1, 200)
   name!: string;
@@ -18,6 +22,9 @@ export class CreateConcertDto {
   @ApiProperty({
     example: 'SECC, Ho Chi Minh City',
   })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @Length(1, 255)
   venue!: string;
